@@ -4,9 +4,11 @@
 	Aimed at interpreting the rules in the dataset and then generating a factor graph out of them.
 	
 	This script will invoke classes in the graph-related-activites folder.
+
+	@TODO: Deal with unary predicates here. !URGENT!
 '''
 
-from graph import node
+from graph import node, belief_propagation
 
 from pprint import pprint
 import re
@@ -33,10 +35,10 @@ for line in f:
 	head = head.replace('learnedPred','').replace('(','').replace(')','')
 	head = head.split(',')
 
-	head_edge = head[0].replace('i_','')
+	head_factor = head[0].replace('i_','')
 	head_vars = [x.strip() for x in head[1:]]
-	factors.append(head_edge)		#@TODO: Shall this predicate be included?
-	vars += head[1:]
+	factors.append(head_factor)		#@TODO: Shall this predicate be included?
+	vars += head_vars
 
 
 	'''
@@ -50,16 +52,10 @@ for line in f:
 
 	body = {}
 	for triple in body_triples:
-		triple = triple.replace('rel(','').replace('),','').replace(')','').strip().split(',')
+		triple = triple.replace('rel(','').replace('),','').replace(')','').strip().replace(" ","").split(',')
 		body[triple[0]] = triple[1:]
 		factors.append(triple[0])
 		vars += triple[1:]
-
-
-	pprint(head_vars)
-	pprint(body)
-
-
 
 	'''
 		Now, we have parsed both the head and the body of the thing. 
@@ -69,36 +65,46 @@ for line in f:
 			First, collect all the variables, and create nodes for them (cannot have more than 1 variable node for one variable)
 	'''
 	vars = list(set(vars))
-	factors = list(set(factors))
 
-	vars = { x: node.Node(x, _type = 'Variable') for x in vars }
-	factors = { x: node.Node(x, _type = 'Factor') for x in factors}
+	vars = { x: node.Variable(x) for x in vars }
 
 	#Now, I'll go through the collected vars and replace the strings with the nodes in the body dictionary.
-	head_vars = [ vars[x].set_as_head() for x in head_vars ]
+	head_vars = [ vars[x].set_head() for x in head_vars ]
 	for key in body.keys():
 		body[key] = [ vars[x] for x in body[key]]
 
+	
+	'''
+		Now, for every factor in the body 
+			(even when the same factor may appear more than once, 
+			they will have a different object, unlike variables.) 
+		we create a new factor object.
+	'''
+	factors = [ node.Factor(key, body[key][0], body[key][1]) for key in body.keys()]
+	fictional_factor = node.Factor(head_factor, head_vars[0], head_vars[1])
+	
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# 				DEBUG
-	# for v in head_vars:
-	# 	print v, ", ",
-	# print "\n"
-	# for key in body.keys():
-	# 	print key, ": ",
-	# 	for v in body[key]:
-	# 		print v, ", ",
-	# 	print "\n"
-	pprint(head_vars)
-	pprint(body)
+	
+	# print line
+	# # for v in head_vars:
+	# # 	print v, ", ",
+	# # print "\n"
+	# # for key in body.keys():
+	# # 	print key, ": ",
+	# # 	for v in body[key]:
+	# # 		print v, ", ",
+	# # 	print "\n"
+	# # pprint(head_vars)
+	# # pprint(body)
+	# print "Summary:"
+	# for factor in factors:
+	# 	print factor
+
+	# print "Head:", fictional_factor
+	# print "~~~~~~~~~~~~"
 	raw_input()
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-	'''
-		Now that the nodes are made properly for all the variables, we need to:
-			- create node for factors
-			- create the factor graph
-
-	'''
-
+	graph = belief_propagation.Graph(_variables=[vars[key] for key in vars], _factors=factors, _fictional_factor=fictional_factor, _rule = line)
+	output = graph.propagate_thy_beliefs()
