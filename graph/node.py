@@ -25,6 +25,7 @@ class Variable(Node):
 		self.head =  _is_head
 		self.null = _is_null
 		self.label = _label# if not self.head else _label+"*"
+		self.u = None #would eventually store onehot representation of the entity - T.ivector
 
 	def set_head(self):
 		self.head = True
@@ -53,6 +54,7 @@ class Factor(Node):
 		self.label = _label
 		self.i = _i
 		self.o = _o
+		self.M = None #would eventually store matrix representation of the relation -  T.dvector
 
 	def __str__(self):
 		return "%(predicate)s(%(i)s, %(o)s)" % { 'predicate':self.label, 'i':self.i, 'o':self.o }

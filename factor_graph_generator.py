@@ -16,7 +16,7 @@ import re
 
 #Open file
 f = open('datasets/wordnet/raw/train-learned.ppr')
-for line in f:
+def rule_parser(rule)
 	
 	vars = []
 	factors = []
@@ -56,7 +56,7 @@ for line in f:
 		body[triple[0]] = triple[1:]
 		factors.append(triple[0])
 		vars += triple[1:]
-
+		
 	'''
 		Now, we have parsed both the head and the body of the thing. 
 		Now,we need to call nodes and create the factor graph on which 
@@ -105,6 +105,6 @@ for line in f:
 	# print "~~~~~~~~~~~~"
 	raw_input()
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	graph = belief_propagation.Graph(_variables=[vars[key] for key in vars], _factors=factors, _fictional_factor=fictional_factor, _rule = line)
-	output = graph.propagate_thy_beliefs()
+	return vars,factors,fictional_factor
+# graph = belief_propagation.Graph(_variables=[vars[key] for key in vars], _factors=factors, _fictional_factor=fictional_factor, _rule = line)
+# output = graph.propagate_thy_beliefs()
