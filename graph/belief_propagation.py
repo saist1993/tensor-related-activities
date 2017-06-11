@@ -4,6 +4,7 @@
 from pprint import pprint
 import theano.tensor as T
 import numpy as np
+import theano
 
 import node
 
@@ -100,7 +101,6 @@ class Graph:
 			Call this function to receive a string containing the path of the belief propagation algorithm.
 			We implement the algorithm listed in the paper mentioned in the comments above
 			
-			Input: the constant appearing in the first position of the head predicate. 
 
 			Pseudocode:
 				-> Create an empty theano vector whose definitions will be iteratively changed.
@@ -109,8 +109,6 @@ class Graph:
 				-> Collect their things somehow. @TODO: how. what format. Shall we use theano variables altogether or what
 				-> Return said stuff.
 		'''	
-
-		self.u_c = _u_c
 
 		print "graph:bp: Starting belief propagation."
 		equation = self._comiple_message_node_(self.head_predicate.o, "Fictional Label")
@@ -182,10 +180,31 @@ class Graph:
 			#If the node is the output node for this factor
 			v_i = self._comiple_message_node_(_factor.i, _factor)
 			# return v_i+ " \dot M_"+_factor.label
-			return v_i.dot(_factor.label)
+			return v_i.dot(_factor.M)
 
 		elif _factor.i == _node:
 			 #If the node is the input node for this factor
 			v_i = self._comiple_message_node_(_factor.o, _factor)
 			# return v_i+ " \dot M_"+_factor.label
-			return v_i.dot(_factor.label)
+			return v_i.dot(_factor.M)
+
+if __name__ == "__main__":
+
+	'''
+		Testbench for the above code.
+		Create a small KB rule and run BP on it.
+	'''	
+	ENT = 5		#Total entities in the KB
+	x = node.Variable('x')
+	x.u = T.dvector()
+	y = node.Variable('y')
+	y.u = T.dvector()
+	p = node.Factor('p', x, y)
+	p.M = theano.shared(np.random.randn(ENT))
+	q = node.Factor('q', y, x)
+	q.M = theano.shared(np.random.randn(ENT))
+
+	uc = np.eye(ENT)[2]
+
+	g = Graph(_variables = [x,y], _factors = [p], _fictional_factor=q)
+	print g.propagate_thy_beliefs(uc)

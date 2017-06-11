@@ -20,7 +20,6 @@ class Variable(Node):
 		This class represents the nodes of the query, which will be mapped to the edges of the factor graph matrix.
 
 	'''
-
 	def __init__(self, _label, _is_head = False, _is_null = False):
 		self.head =  _is_head
 		self.null = _is_null
