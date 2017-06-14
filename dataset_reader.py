@@ -14,7 +14,7 @@ with open(fname) as tsv:
 		facts.append(row)
 
 
-def label_one_hot_encoder(fatcs):
+def label_one_hot_encoder(facts):
 	#preprocesssing for converting the data into a one hot encoded format
 	facts = np.array(facts)
 	facts = np.delete(facts, [0], axis=1)
@@ -23,14 +23,14 @@ def label_one_hot_encoder(fatcs):
 	facts[0] = le.fit_transform(facts[0])
 	facts[1] = le.fit_transform(facts[1])
 	facts[2] = le.fit_transform(facts[2])
-
 	ents = np.concatenate([facts[1],facts[2]])
+	# print len(list(set(ents)))
 	entites = [[ent] for ent in ents]
 	enc = preprocessing.OneHotEncoder()
 	enc.fit(entites)
+	return le,enc,len(list(set(ents)))
 
-	return le,enc
-
+print label_one_hot_encoder(facts)
 
 
 # #preprocesssing for converting the data into a one hot encoded format

@@ -16,15 +16,15 @@ import re
 
 #Open file
 f = open('datasets/wordnet/raw/train-learned.ppr')
-def rule_parser(rule)
+def rule_parser(line):
 	
-	vars = []
+	var = []
 	factors = []
 
 	if not 'learnedPred' == line[:11]:
 		print line
 		# raw_input("Skipping this line. Press Enter to continue")
-		continue
+		return -1
 
 	head, body = line.split(':-')
 
@@ -36,9 +36,9 @@ def rule_parser(rule)
 	head = head.split(',')
 
 	head_factor = head[0].replace('i_','')
-	head_vars = [x.strip() for x in head[1:]]
+	head_var = [x.strip() for x in head[1:]]
 	factors.append(head_factor)		#@TODO: Shall this predicate be included?
-	vars += head_vars
+	var += head_var
 
 
 	'''
@@ -55,7 +55,7 @@ def rule_parser(rule)
 		triple = triple.replace('rel(','').replace('),','').replace(')','').strip().replace(" ","").split(',')
 		body[triple[0]] = triple[1:]
 		factors.append(triple[0])
-		vars += triple[1:]
+		var += triple[1:]
 		
 	'''
 		Now, we have parsed both the head and the body of the thing. 
@@ -64,14 +64,13 @@ def rule_parser(rule)
 
 			First, collect all the variables, and create nodes for them (cannot have more than 1 variable node for one variable)
 	'''
-	vars = list(set(vars))
+	var = list(set(var))
+	var = { x: node.Variable(x) for x in var }
 
-	vars = { x: node.Variable(x) for x in vars }
-
-	#Now, I'll go through the collected vars and replace the strings with the nodes in the body dictionary.
-	head_vars = [ vars[x].set_head() for x in head_vars ]
+	#Now, I'll go through the collected var and replace the strings with the nodes in the body dictionary.
+	head_var = [ var[x].set_head() for x in head_var ]
 	for key in body.keys():
-		body[key] = [ vars[x] for x in body[key]]
+		body[key] = [ var[x] for x in body[key]]
 
 	
 	'''
@@ -81,13 +80,13 @@ def rule_parser(rule)
 		we create a new factor object.
 	'''
 	factors = [ node.Factor(key, body[key][0], body[key][1]) for key in body.keys()]
-	fictional_factor = node.Factor(head_factor, head_vars[0], head_vars[1])
+	fictional_factor = node.Factor(head_factor, head_var[0], head_var[1])
 	
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# 				DEBUG
 	
 	# print line
-	# # for v in head_vars:
+	# # for v in head_var:
 	# # 	print v, ", ",
 	# # print "\n"
 	# # for key in body.keys():
@@ -95,7 +94,7 @@ def rule_parser(rule)
 	# # 	for v in body[key]:
 	# # 		print v, ", ",
 	# # 	print "\n"
-	# # pprint(head_vars)
+	# # pprint(head_var)
 	# # pprint(body)
 	# print "Summary:"
 	# for factor in factors:
@@ -103,8 +102,10 @@ def rule_parser(rule)
 
 	# print "Head:", fictional_factor
 	# print "~~~~~~~~~~~~"
-	raw_input()
+	# raw_input()
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	return vars,factors,fictional_factor
-# graph = belief_propagation.Graph(_variables=[vars[key] for key in vars], _factors=factors, _fictional_factor=fictional_factor, _rule = line)
+	# print "type is", type(var)
+	var = [var[key] for key in var.keys()]
+	return var,factors,fictional_factor
+# graph = belief_propagation.Graph(_variables=[var[key] for key in var], _factors=factors, _fictional_factor=fictional_factor, _rule = line)
 # output = graph.propagate_thy_beliefs()
