@@ -26,9 +26,3 @@ def parse_example(fname):
 		data.append(s)
 	return data
 
-def encode(vars,factors,fictional_factor,number_of_entites):
-	for var in vars:
-		var.u = T.dvector(label_encoder.transform(var.label))
-	for rel in factors:
-		rel.M = T.shared(np.random.randn(number_of_entites,number_of_entites))
-	return vars,factors,fictional_factor

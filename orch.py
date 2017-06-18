@@ -4,17 +4,48 @@ import csv
 import theano
 import numpy as np
 import theano.tensor as T
+import scipy.sparse as sps
+from theano import sparse
 from sklearn import preprocessing
 #internal libraries
-import dataset_reader,factor_graph_generator, utils, graph.belief_propagation
+import dataset_reader,factor_graph_generator, utils, graph.belief_propagation as gbp
 
 fname = "datasets/wordnet/raw/valid.cfacts"	#dataset file name. Since wordnet is tabseperated file.
 example_file = 'datasets/wordnet/raw/train.examples'
 facts = [] #place where the data after file parsing would be stored
 
+def create_relation_matrix(rel_label,number_of_entites,facts):
+	''' 
+		Function creates sparse relation matrix given relation label and facts.
+
+		For the given predicate, we filter from the facts object, all those facts which have our target relation.
+		Then, we make three arrays out of this filtered facts:
+			- A: left entity of these facts
+			- B: right entity of these facts
+			- C: random floats (same length as A and B)
+	'''
+	left_entity = []
+	right_entity = []
+	random_number = []
+	for i in xrange(0,len(facts[0])):
+		if facts[0][i] == rel_label:
+			left_entity.append(facts[1][i])
+			right_entity.append(facts[2][i])
+			random_number.append(np.random.randn)
+	mat = np.zeros((number_of_entites,number_of_entites))
+	for i in range(len(left_entity)):
+		
+		mat[left_entity[i]][right_entity[j]] = np.random.randn()
+
+	return sps.csr_matrix(mat)
+	# return sparse.CSR((random_number,(left_entity,right_entity)),shape=(number_of_entites,number_of_entites))
+	# return sps.csr_matrix((random_number,(left_entity,right_entity)),shape=(number_of_entites,number_of_entites))
+	# matrix = sparse.coo_matrix((C,(A,B)),shape=(5,5))
+
+
 relation_lookup = {}
 #encodes the relations and entites 
-def encode(vars,factors,fictional_factor,number_of_entites):
+def encode(vars,factors,fictional_factor,number_of_entites,facts):
 	print "encoding variables"
 	for var in vars:
 		var.u = T.dvector(var.label)
@@ -25,9 +56,31 @@ def encode(vars,factors,fictional_factor,number_of_entites):
 		except KeyError:
 			print "key error"
 			print number_of_entites
-			relation_lookup[rel.label] = theano.shared(np.random.randn(number_of_entites,number_of_entites))
+			relation_lookup[rel.label] = theano.shared(create_relation_matrix(rel.label,number_of_entites,facts))
+			raw_input("see error")
 			print "done creating shared varaibles"
 			rel.M = relation_lookup[rel.label]
+
+	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# DEBUG
+	print "DEBUGGING ENCODER"
+	print "Vars"
+	for v in vars:
+		print v.label
+		print v.u, ' ', v.u.__class__
+
+	print "Factors"
+	for f in factors:
+		print f.label
+		print f.i.label, ', ', f.o.label
+		print f.i.u, ', ', f.o.u
+
+	print "Factor Shared Vars"
+	for f in factors:
+		print f.M.__class__
+	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 	return vars,factors,fictional_factor
 
 
@@ -39,7 +92,7 @@ with open(fname) as tsv:
 
 #label_encoder - encodes any relation or entity to a label
 #entity_encoder - gives one-hot reperesentation of the label encoded entity
-label_encoder,entity_encoder,number_of_entites = dataset_reader.label_one_hot_encoder(facts)
+label_encoder,entity_encoder,number_of_entites,facts = dataset_reader.label_one_hot_encoder(facts)#returned facts is transposed of the original sparse
 
 '''
 	This block will read rules from the wordnet dataset 
@@ -54,9 +107,9 @@ for line in f:
 	print "started rule parsing"
 	vars,factors,fictional_factor = factor_graph_generator.rule_parser(line)
 	print "done with rule parsing and started encoding"
-	vars,factors,fictional_factor = encode(vars,factors,fictional_factor,number_of_entites)
+	vars,factors,fictional_factor = encode(vars,factors,fictional_factor,number_of_entites,facts)
 	print "done with encoding and passed to graph function"
-	g = Graph(vars,factors,fictional_factor)
+	g = gbp.Graph(vars,factors,fictional_factor)
 	theano_function = g.propagate_thy_beliefs()
 	print "graph completed and theano function received!!"
 	# BP() :- send this to belief propogation to get the factor graph

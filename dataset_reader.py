@@ -28,7 +28,18 @@ def label_one_hot_encoder(facts):
 	entites = [[ent] for ent in ents]
 	enc = preprocessing.OneHotEncoder()
 	enc.fit(entites)
-	return le,enc,len(list(set(ents)))
+	''' 
+		[[rel1,rel1,rel2,rel3,rel1]
+		[1234,1256,123,567]
+		[123,4563,46554,234]]
+
+		rel1(1234,123)
+		rel1(1256,4563)
+		1234,1256 ... are all label encoded; Not one hot
+
+
+	'''
+	return le,enc,len(list(set(ents))),facts
 
 print label_one_hot_encoder(facts)
 
