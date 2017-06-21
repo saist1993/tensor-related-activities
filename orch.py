@@ -13,6 +13,8 @@ import dataset_reader,factor_graph_generator, utils, graph.belief_propagation as
 fname = "datasets/wordnet/raw/valid.cfacts"	#dataset file name. Since wordnet is tabseperated file.
 example_file = 'datasets/wordnet/raw/train.examples'
 facts = [] #place where the data after file parsing would be stored
+rule_lookup = {} # {rule.label - [[rulebody1],[rulebody2]]}
+relation_lookup = {} #{relation.label:sparseMatrix repeeresentation of relation}
 
 def create_relation_matrix(rel_label,number_of_entites,facts):
 	''' 
@@ -43,7 +45,6 @@ def create_relation_matrix(rel_label,number_of_entites,facts):
 	# matrix = sparse.coo_matrix((C,(A,B)),shape=(5,5))
 
 
-relation_lookup = {}
 #encodes the relations and entites 
 def encode(vars,factors,fictional_factor,number_of_entites,facts):
 	print "encoding variables"
@@ -56,10 +57,12 @@ def encode(vars,factors,fictional_factor,number_of_entites,facts):
 		except KeyError:
 			print "key error"
 			print number_of_entites
-			relation_lookup[rel.label] = theano.shared(create_relation_matrix(rel.label,number_of_entites,facts))
+			relation_lookup[rel.label] = create_relation_matrix(rel.label,number_of_entites,facts)
+
+			# relation_lookup[rel.label] = theano.shared(create_relation_matrix(rel.label,number_of_entites,facts))
 			raw_input("see error")
 			print "done creating shared varaibles"
-			rel.M = relation_lookup[rel.label]
+			rel.M = T.dmatrix(rel.label)
 
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# DEBUG
@@ -84,11 +87,13 @@ def encode(vars,factors,fictional_factor,number_of_entites,facts):
 	return vars,factors,fictional_factor
 
 
-#file is in tab seperated formated
+#file is in tab seperated formated.
+#This parses the facts file.
 with open(fname) as tsv:
 	reader = csv.reader(tsv, dialect='excel', delimiter='\t')
 	for row in reader:
 		facts.append(row)
+#facts - [[rel,ent1,ent2],[rel2,ent3,ent4]]
 
 #label_encoder - encodes any relation or entity to a label
 #entity_encoder - gives one-hot reperesentation of the label encoded entity
@@ -99,7 +104,6 @@ label_encoder,entity_encoder,number_of_entites,facts = dataset_reader.label_one_
 	and call factorgraph generator to return the theano function which can be then used to do the NN Magic.
 '''
 f = open('datasets/wordnet/raw/train-learned.ppr')
-rule_lookup = {}
 for line in f:
 	temp = []
 	if factor_graph_generator.rule_parser(line) == -1:
@@ -110,11 +114,12 @@ for line in f:
 	vars,factors,fictional_factor = encode(vars,factors,fictional_factor,number_of_entites,facts)
 	print "done with encoding and passed to graph function"
 	g = gbp.Graph(vars,factors,fictional_factor)
-	theano_function = g.propagate_thy_beliefs()
+	# symbols whihc have been used for creating the BP equation in the same sequ as it should be 
+	theano_function,symbols = g.propagate_thy_beliefs()
 	print "graph completed and theano function received!!"
 	# BP() :- send this to belief propogation to get the factor graph
 	# vars - list of variables ; factors - list of relation ; fictional_factor - head
-	temp.extend([vars,factors,fictional_factor,theano_function])
+	temp.extend([vars,factors,fictional_factor,theano_function,symbols])
 	try:
 		rule_lookup[fictional_factor.label] = rule_lookup[fictional_factor.label].append(temp)
 	except:
@@ -164,7 +169,14 @@ for node in data:
 	for rule in rules:
 		#each rule is a list containing :- [vars,factors,fictional_factor, belief_propagation_equation]
 		theano_function = rule[3]
-		pred,err = theano_function(x,y)
+		relation_list = []
+		for rel in rule[-1]:
+			relation_list.append(relation_lookup[rel.label])
+		output,relation_matrix = theano_function(x,y,relation_list)
+		for i in xrange(0,len(rule[-1])):
+			rel = rule[-1][i]
+			relation_lookup[rel.label] = relation_matrix[i]
+
 
 
 

@@ -2,7 +2,6 @@
 # learnedPred rules
 
 interp(P,X,Y) :- learnedPred(P,X,Y) {fixedWeight}. 
-learnedPred(P,X,Y) :- rel(P,X,Y) {fixedWeight}.
 learnedPred(i_member_holonym,X,Y) :- rel(hyponym,X,Z), rel(member_holonym,Z,Y) {lr_chain(i_member_holonym,hyponym,member_holonym)}.
 learnedPred(i_hypernym,X,Y) :- rel(hyponym,Y,X) {lr_ifInv(i_hypernym,hyponym)}.
 learnedPred(i_member_holonym,X,Y) :- rel(member_meronym,Y,X) {lr_ifInv(i_member_holonym,member_meronym)}.

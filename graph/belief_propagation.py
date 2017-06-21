@@ -113,7 +113,10 @@ class Graph:
 
 		print "graph:bp: Starting belief propagation."
 		equation = self._comiple_message_node_(self.head_predicate.o, "Fictional Label")
-		print equation,type(equation)
+		symbols = self._comiple_message_symbols_node_(self.head_predicate.o, "Fictional Label")
+		print equation,type(equation),symbols
+		raw_input("Verify Symbols")
+		
 		print "graph:bp: Belief propagation complete."
 
 		#Define an empty dvector to be used as the 'y' label (which will later contain n hot information about desired entities)
@@ -122,23 +125,24 @@ class Graph:
 		# Do a softmax over the final BP Equation
 		equation = T.nnet.softmax(equation)	
 		
+
 		# Collect all the parameters (shared vars), found in the factors of this graph.
-		parameters = [ x.M for x in self.factors ]
-		
+		parameters = [ x.u if type(x) == node.Variable else x.M for x in symbols ]
 
 		loss = -y * T.log(equation) - (1 - y)*T.log(1-equation) # unregularized cross-entropy loss
 
 		cost = loss.mean() 	#+ 0.01*(w**2).sum()   (unregularized )
 
 		gradients  = T.grad(cost, parameters)
+		updated_matrices = [parameters[i] - 0.1 * gradients[i] for i in range(len(parameters))]
 		
 		function = theano.function(
-          inputs=[ self.head_predicate.i.u, y ],		#Inputs to this is the head predicates' symbolic var, and another dvector
-          outputs= equation,			#Output to this thing is the BP algorithm's output expression
-          updates=tuple([(parameters[i], parameters[i] - 0.1 * gradients[i]) for i in range(len(parameters))]))		#Updates are the gradients of cost wrt parameters
+          inputs=[ self.head_predicate.i.u, y, parameters  ],		#Inputs to this is the head predicates' symbolic var, and another dvector
+          outputs= [equation] + updated_matrices			#Output to this thing is the BP algorithm's output expression
+          # updates=tuple([(parameters[i], parameters[i] - 0.1 * gradients[i]) for i in range(len(parameters))])		#Updates are the gradients of cost wrt parameters
+         )
 
-		return functions
-
+		return function, symbols
 
 	def _comiple_message_node_(self, _node, _factor):
 		'''
@@ -158,6 +162,9 @@ class Graph:
 
 		if _node == self.head_predicate.i:
 			#This is the input variable.
+			if _node.u is None:
+				print _node
+				raw_input("Node has nothing")
 			return _node.u
 
 		#This is NOT the input variable.
@@ -210,6 +217,81 @@ class Graph:
 			v_i = self._comiple_message_node_(_factor.o, _factor)
 			# return v_i+ " \dot M_"+_factor.label
 			return v_i.dot(_factor.M)
+
+	def _comiple_message_symbols_node_(self, _node, _factor):
+		'''
+			Pseudocode: 
+				(treat _node as X and _factor as L )
+
+				if X is the input variable (global) then
+					return u_c , the input
+				else
+					generate a new variable name v_x
+					collect neighbouring L_i of X excluding L
+					for [L_1, L_2 .. L_i ], do
+						v_i = compile_message(L_i -> X)
+					emit(v_x = v1 dot v2 ... dot vi)
+					return v_x
+		'''
+
+		if _node == self.head_predicate.i:
+			#This is the input variable.
+			return []
+
+		#This is NOT the input variable.
+		neighbors = self._get_neighbours(_node, _exclude=_factor) #Will be a list of factors.
+		
+		#Send the neighbour + current node to compilemessage_factor and collect what they have to say.
+		# v_x = ' \circle '.join([ self._compile_message_factor_(_factor = factor, _node = _node) for factor in neighbors ])
+		neighboring_values = []
+		for factor in neighbors:
+			neighboring_values += self._compile_message_symbols_factor_(_factor = factor, _node = _node)
+		# neighboring_values = [ self._compile_message_symbols_factor_(_factor = factor, _node = _node) for factor in neighbors ]
+
+		# if len(neighboring_values) > 0:
+		# 	v_x = neighboring_values[0]
+		# 	for remaining_values in neighboring_values[1:]:
+		# 		v_x = v_x * remaining_values
+		# else:
+		# 	#In this case, since there are no neighbors, there's literally nothing to return.
+		# 	#@TODO: What do we do here
+		# 	print "belief_propagation:Graph:compile_message: Part where there are no neighbours!"
+		# 	pass
+
+		return neighboring_values
+
+	def _compile_message_symbols_factor_(self, _factor, _node):
+		'''
+			Pseudocode:
+				(treat _node as X and _factor as L)
+
+			if L is a unary factor:
+				emit v_L,_X = v_L
+
+			elif X is the output node of L
+				v_i = compilemessage_node(X_o, L)
+
+			elif X is the output node of L
+				v_i =  compilemessage_node(X_i, L)
+
+			return this
+		'''
+		
+		# if _factor.o.null:
+		# 	#If the factor is unary.
+		# 	return _factor.M 	#@TODO: See if we need another variable like self.v to represent the value of unary predicates.
+
+		if _factor.o == _node:
+			#If the node is the output node for this factor
+			v_i = self._comiple_message_symbols_node_(_factor.i, _factor)
+			# return v_i+ " \dot M_"+_factor.label
+			return v_i + [ _factor ]
+
+		elif _factor.i == _node:
+			 #If the node is the input node for this factor
+			v_i = self._comiple_message_symbols_node_(_factor.o, _factor)
+			# return v_i+ " \dot M_"+_factor.label
+			return v_i +  [ _factor ]
 
 if __name__ == "__main__":
 
