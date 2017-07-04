@@ -50,11 +50,12 @@ def rule_parser(line):
 	type = body[-1]
 	body_triples = body[:-1]
 
-	body = {}
+	body = []
 	for triple in body_triples:
 		triple = triple.replace('rel(','').replace('),','').replace(')','').strip().replace(" ","").split(',')
-		body[triple[0]] = triple[1:]
-		factors.append(triple[0])
+		body.append([triple[0],triple[1:]])
+		# body[triple[0]] = triple[1:]
+		# factors.append(triple[0])
 		var += triple[1:]
 		
 	'''
@@ -69,17 +70,19 @@ def rule_parser(line):
 
 	#Now, I'll go through the collected var and replace the strings with the nodes in the body dictionary.
 	head_var = [ var[x].set_head() for x in head_var ]
-	for key in body.keys():
-		body[key] = [ var[x] for x in body[key]]
+	# for key in body.keys():
+	# 	body[key] = [ var[x] for x in body[key]]
+	for i in range(len(body)):
+		body[i] = [body[i][0]]+[[var[x] for x in body[i][1]]]
 
-	
+
 	'''
 		Now, for every factor in the body 
 			(even when the same factor may appear more than once, 
 			they will have a different object, unlike variables.) 
 		we create a new factor object.
 	'''
-	factors = [ node.Factor(key, body[key][0], body[key][1]) for key in body.keys()]
+	factors = [ node.Factor(triple[0], triple[1][0], triple[1][1]) for triple in body]
 	fictional_factor = node.Factor(head_factor, head_var[0], head_var[1])
 	
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

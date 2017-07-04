@@ -1,11 +1,14 @@
 '''
 	Authored: 8th June (first version)	
 '''
+import sys
+import theano
+import numpy as np
 from pprint import pprint
 import theano.tensor as T
-import numpy as np
-import theano
+from termcolor import colored, cprint
 
+#internal libraries
 import node
 
 class Graph:
@@ -28,7 +31,7 @@ class Graph:
 			Initialize matrix
 			Put values in the matrix.
 		'''
-		print "Creating graph for: ", _rule
+		# print "Creating graph for: ", _rule
 		null_node = node.Node("phi")
 		
 		#Keep the list of variables in order to map the indices of the matrix to actual graph nodes
@@ -55,7 +58,7 @@ class Graph:
 		# 	print self.variables.index(v)
 		# print ""
 		# print self.graph
-		self.print_graph()
+		# self.print_graph()
 
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -96,6 +99,11 @@ class Graph:
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+	def inspect_inputs(i, node, fn):
+	    print i, node, "input(s) value(s):", [input[0] for input in fn.inputs]
+
+	def inspect_outputs(i, node, fn):
+	    print " output(s) value(s):", [output[0] for output in fn.outputs]
 
 	def propagate_thy_beliefs(self):
 		'''
@@ -111,13 +119,10 @@ class Graph:
 				-> Return said stuff.
 		'''	
 
-		print "graph:bp: Starting belief propagation."
+		# print "graph:bp: Starting belief propagation."
 		equation = self._comiple_message_node_(self.head_predicate.o, "Fictional Label")
 		symbols = self._comiple_message_symbols_node_(self.head_predicate.o, "Fictional Label")
-		print equation,type(equation),symbols
-		raw_input("Verify Symbols")
 		
-		print "graph:bp: Belief propagation complete."
 
 		#Define an empty dvector to be used as the 'y' label (which will later contain n hot information about desired entities)
 		y = T.dvector('y')
@@ -127,18 +132,52 @@ class Graph:
 		
 
 		# Collect all the parameters (shared vars), found in the factors of this graph.
-		parameters = [ x.u if type(x) == node.Variable else x.M for x in symbols ]
-
+		#parameters is a list of matrices (relation)
+		
+		parameters = [x.M for x in symbols]
+		
 		loss = -y * T.log(equation) - (1 - y)*T.log(1-equation) # unregularized cross-entropy loss
 
 		cost = loss.mean() 	#+ 0.01*(w**2).sum()   (unregularized )
 
 		gradients  = T.grad(cost, parameters)
-		updated_matrices = [parameters[i] - 0.1 * gradients[i] for i in range(len(parameters))]
 		
+
+		updated_matrices = [parameters[i] - 0.1 * gradients[i] for i in range(len(parameters))]
+
+		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		#  DEBUG
+		# print "Equation: ", equation
+		# print "Type of equation: ",type(equation)
+		# print "Symbols: ", symbols
+		# print "graph:bp: Belief propagation complete."
+
+		# print "Parameters are"
+		# for p in parameters:
+		# 	print p," and the type is :",type(p)
+
+		# print gradients
+		# print "Updated Matrices are :", type(updated_matrices[0])
+		
+		# print colored(type(self.head_predicate.i.u),'red')
+
+		# print "Inputs: \n"
+		# print type(self.head_predicate.i.u)
+		# print type(y)
+		# print [ type(x) for x in parameters ]
+
+		# raw_input("Verify Symbols and Gradients ")		
+		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 		function = theano.function(
-          inputs=[ self.head_predicate.i.u, y, parameters  ],		#Inputs to this is the head predicates' symbolic var, and another dvector
-          outputs= [equation] + updated_matrices			#Output to this thing is the BP algorithm's output expression
+          inputs = [self.head_predicate.i.u, y]+ parameters,		#Inputs to this is the head predicates' symbolic var, and another dvector
+          # inputs = [self.head_predicate.i.u,parameters[0]],		#Inputs to this is the head predicates' symbolic var, and another dvector
+          # outputs = updated_matrices			#Output to this thing is the BP algorithm's output expression
+          outputs = [ equation ] + updated_matrices ,
+          mode=theano.compile.MonitorMode(
+                        pre_func=self.inspect_inputs,
+                        post_func=self.inspect_outputs)			#Output to this thing is the BP algorithm's output expression
           # updates=tuple([(parameters[i], parameters[i] - 0.1 * gradients[i]) for i in range(len(parameters))])		#Updates are the gradients of cost wrt parameters
          )
 
@@ -164,14 +203,13 @@ class Graph:
 			#This is the input variable.
 			if _node.u is None:
 				print _node
-				raw_input("Node has nothing")
+				# raw_input("Node has nothing")
 			return _node.u
 
 		#This is NOT the input variable.
 		neighbors = self._get_neighbours(_node, _exclude=_factor) #Will be a list of factors.
 		
 		#Send the neighbour + current node to compilemessage_factor and collect what they have to say.
-		# v_x = ' \circle '.join([ self._compile_message_factor_(_factor = factor, _node = _node) for factor in neighbors ])
 		neighboring_values = [ self._compile_message_factor_(_factor = factor, _node = _node) for factor in neighbors ]
 		if len(neighboring_values) > 0:
 			v_x = neighboring_values[0]
@@ -180,7 +218,7 @@ class Graph:
 		else:
 			#In this case, since there are no neighbors, there's literally nothing to return.
 			#@TODO: What do we do here
-			print "belief_propagation:Graph:compile_message: Part where there are no neighbours!"
+			# print "belief_propagation:Graph:compile_message: Part where there are no neighbours!"
 			pass
 
 		return v_x
@@ -312,4 +350,4 @@ if __name__ == "__main__":
 	# uc = np.eye(ENT)[2]
 
 	g = Graph(_variables = [x,y], _factors = [p], _fictional_factor=q)
-	print g.propagate_thy_beliefs()
+	# print g.propagate_thy_beliefs()

@@ -13,7 +13,7 @@ import dataset_reader,factor_graph_generator, utils, graph.belief_propagation as
 fname = "datasets/wordnet/raw/valid.cfacts"	#dataset file name. Since wordnet is tabseperated file.
 example_file = 'datasets/wordnet/raw/train.examples'
 facts = [] #place where the data after file parsing would be stored
-rule_lookup = {} # {rule.label - [[rulebody1],[rulebody2]]}
+rule_lookup = {} # {rule.label - [[vars,factors,fictional_factor,theano_function,symbols],[rulebody2]]}
 relation_lookup = {} #{relation.label:sparseMatrix repeeresentation of relation}
 
 def create_relation_matrix(rel_label,number_of_entites,facts):
@@ -47,40 +47,42 @@ def create_relation_matrix(rel_label,number_of_entites,facts):
 
 #encodes the relations and entites 
 def encode(vars,factors,fictional_factor,number_of_entites,facts):
-	print "encoding variables"
+	# print "encoding variables"
 	for var in vars:
 		var.u = T.dvector(var.label)
-	print "done encoding variables and off to relation encoding"	
+	# print "done encoding variables and off to relation encoding"	
 	for rel in factors:
-		try:
-			rel.M = relation_lookup[rel.label]
-		except KeyError:
-			print "key error"
-			print number_of_entites
+		if rel.label not in relation_lookup:
 			relation_lookup[rel.label] = create_relation_matrix(rel.label,number_of_entites,facts)
+		# try:
+		# 	print relation_lookup[rel.label]
+		# except KeyError:
+		# 	print "key error"
+		# 	# print number_of_entites
+		# 	relation_lookup[rel.label] = create_relation_matrix(rel.label,number_of_entites,facts)
 
-			# relation_lookup[rel.label] = theano.shared(create_relation_matrix(rel.label,number_of_entites,facts))
-			raw_input("see error")
-			print "done creating shared varaibles"
-			rel.M = T.dmatrix(rel.label)
+		# 	# relation_lookup[rel.label] = theano.shared(create_relation_matrix(rel.label,number_of_entites,facts))
+		# 	raw_input("see error")
+		# 	print "done creating shared varaibles"
+		rel.M = T.dmatrix('T'+rel.label)
 
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# DEBUG
-	print "DEBUGGING ENCODER"
-	print "Vars"
-	for v in vars:
-		print v.label
-		print v.u, ' ', v.u.__class__
+	# print "DEBUGGING ENCODER"
+	# print "Vars"
+	# for v in vars:
+	# 	print v.label
+	# 	print v.u, ' ', v.u.__class__
 
-	print "Factors"
-	for f in factors:
-		print f.label
-		print f.i.label, ', ', f.o.label
-		print f.i.u, ', ', f.o.u
+	# print "Factors"
+	# for f in factors:
+	# 	print f.label
+	# 	print f.i.label, ', ', f.o.label
+	# 	print f.i.u, ', ', f.o.u
 
-	print "Factor Shared Vars"
-	for f in factors:
-		print f.M.__class__
+	# print "Factor Shared Vars"
+	# for f in factors:
+	# 	print f.M.__class__
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -108,15 +110,16 @@ for line in f:
 	temp = []
 	if factor_graph_generator.rule_parser(line) == -1:
 		continue
-	print "started rule parsing"
+
+	print "started rule parsing for rule: ", line
 	vars,factors,fictional_factor = factor_graph_generator.rule_parser(line)
-	print "done with rule parsing and started encoding"
+	
 	vars,factors,fictional_factor = encode(vars,factors,fictional_factor,number_of_entites,facts)
-	print "done with encoding and passed to graph function"
+	
 	g = gbp.Graph(vars,factors,fictional_factor)
 	# symbols whihc have been used for creating the BP equation in the same sequ as it should be 
 	theano_function,symbols = g.propagate_thy_beliefs()
-	print "graph completed and theano function received!!"
+	# print "graph completed and theano function received!!"
 	# BP() :- send this to belief propogation to get the factor graph
 	# vars - list of variables ; factors - list of relation ; fictional_factor - head
 	temp.extend([vars,factors,fictional_factor,theano_function,symbols])
@@ -157,7 +160,9 @@ for node in data:
 	''' 
 		Creating true input labels
 	'''
-	x = node[0][1].u #verify this 
+	x = node[0][1].u #verify this
+	# print x, type(x),node[0][1]
+	# raw_input("check for types and shit of x")
 	'''
 		list of rules having same fictional factor / head.
 		each rule is a list containing :- [vars,factors,fictional_factor, belief_propagation_equation]
