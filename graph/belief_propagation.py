@@ -1,12 +1,18 @@
 '''
 	Authored: 8th June (first version)	
 '''
-import sys
-import theano
-import numpy as np
-from pprint import pprint
-import theano.tensor as T
 from termcolor import colored, cprint
+from pprint import pprint
+import sys
+
+from theano import sparse
+import theano.tensor as T
+import theano
+
+import numpy as np
+import scipy as sp
+import scipy.sparse as sps
+
 
 #internal libraries
 import node
@@ -37,6 +43,7 @@ class Graph:
 		#Keep the list of variables in order to map the indices of the matrix to actual graph nodes
 		self.variables = _variables + [null_node]
 		self.factors = _factors
+
 		#Keep the constant appearing in the i position of the head variable to be used while doing the BP 
 		self.u_c = None 	
 
@@ -125,25 +132,32 @@ class Graph:
 		
 
 		#Define an empty dvector to be used as the 'y' label (which will later contain n hot information about desired entities)
-		y = T.dvector('y')
+		y = sparse.csr_dmatrix('y')
 
 		# Do a softmax over the final BP Equation
-		equation = T.nnet.softmax(equation)	
-		
+		equation = sparse.structured_exp(equation)
+		equation = sparse.row_scale(equation, 1.0/sparse.sp_sum(equation, axis = 1))
 
 		# Collect all the parameters (shared vars), found in the factors of this graph.
-		#parameters is a list of matrices (relation)
-		
+		#parameters is a list of matrices (relation)		
 		parameters = [x.M for x in symbols]
 		
-		loss = -y * T.log(equation) - (1 - y)*T.log(1-equation) # unregularized cross-entropy loss
+		#Cross entropy loss
+		# loss = - y * T.log(equation) + (y - 1)*T.log(1-equation) # unregularized cross-entropy loss in theano
+		a = sparse.mul(y, sparse.structured_log(equation)) 
+		b = sparse.mul(sparse.structured_add(y,-1.0), sparse.structured_log(sparse.structured_add(equation,-1.0)))
+		loss = sparse.sub(b, a)
 
-		cost = loss.mean() 	#+ 0.01*(w**2).sum()   (unregularized )
+		# Unregularied Loss
+		loss_dense = sparse.dense_from_sparse(loss)
+		cost = loss_dense.mean()
+		# cost = sparse.sp_sum(loss, axis = 1)/float(ne)
 
-		gradients  = T.grad(cost, parameters)
+		gradients  = theano.grad(cost, parameters)
 		
-
-		updated_matrices = [parameters[i] - 0.1 * gradients[i] for i in range(len(parameters))]
+		updated_matrices = [sparse.sub(parameters[i], 0.1*gradients[i] ) for i in range(len(parameters))]
+		# updated_matrices = [sparse.sub(parameters[i], sparse.row_scale(gradients[i], 0.1)) for i in range(len(parameters))]
+		# updated_matrices = [parameters[i] - 0.1 * gradients[i] for i in range(len(parameters))]
 
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		#  DEBUG
@@ -169,15 +183,14 @@ class Graph:
 		# raw_input("Verify Symbols and Gradients ")		
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
 		function = theano.function(
           inputs = [self.head_predicate.i.u, y]+ parameters,		#Inputs to this is the head predicates' symbolic var, and another dvector
           # inputs = [self.head_predicate.i.u,parameters[0]],		#Inputs to this is the head predicates' symbolic var, and another dvector
           # outputs = updated_matrices			#Output to this thing is the BP algorithm's output expression
-          outputs = [ equation ] + updated_matrices ,
-          mode=theano.compile.MonitorMode(
-                        pre_func=self.inspect_inputs,
-                        post_func=self.inspect_outputs)			#Output to this thing is the BP algorithm's output expression
+          outputs = [ equation ] + updated_matrices 
+          # mode=theano.compile.MonitorMode(
+          #               pre_func=self.inspect_inputs,
+          #               post_func=self.inspect_outputs)			#Output to this thing is the BP algorithm's output expression
           # updates=tuple([(parameters[i], parameters[i] - 0.1 * gradients[i]) for i in range(len(parameters))])		#Updates are the gradients of cost wrt parameters
          )
 
@@ -200,6 +213,7 @@ class Graph:
 		'''
 
 		if _node == self.head_predicate.i:
+
 			#This is the input variable.
 			if _node.u is None:
 				print _node
@@ -214,7 +228,8 @@ class Graph:
 		if len(neighboring_values) > 0:
 			v_x = neighboring_values[0]
 			for remaining_values in neighboring_values[1:]:
-				v_x = v_x * remaining_values
+				v_x = sparse.mul(v_x, remaining_values)
+				# v_x = v_x * remaining_values
 		else:
 			#In this case, since there are no neighbors, there's literally nothing to return.
 			#@TODO: What do we do here
@@ -247,14 +262,16 @@ class Graph:
 		elif _factor.o == _node:
 			#If the node is the output node for this factor
 			v_i = self._comiple_message_node_(_factor.i, _factor)
-			# return v_i+ " \dot M_"+_factor.label
-			return v_i.dot(_factor.M)
+
+			return sparse.structured_dot(v_i, _factor.M)
+			# return v_i.dot(_factor.M)
 
 		elif _factor.i == _node:
-			 #If the node is the input node for this factor
+
+			#If the node is the input node for this factor
 			v_i = self._comiple_message_node_(_factor.o, _factor)
-			# return v_i+ " \dot M_"+_factor.label
-			return v_i.dot(_factor.M)
+			return sparse.structured_dot(v_i, _factor.M)
+			# return v_i.dot(_factor.M)
 
 	def _comiple_message_symbols_node_(self, _node, _factor):
 		'''
@@ -339,15 +356,31 @@ if __name__ == "__main__":
 	'''	
 	ENT = 5		#Total entities in the KB
 	x = node.Variable('x')
-	x.u = T.dvector()
+	x.u = sparse.csr_matrix('x')
 	y = node.Variable('y')
-	y.u = T.dvector()
+	y.u = sparse.csr_matrix('y')
 	p = node.Factor('p', x, y)
-	p.M = theano.shared(np.random.randn(ENT))
+	p.M = sparse.csr_matrix('p')
 	q = node.Factor('q', y, x)
-	q.M = theano.shared(np.random.randn(ENT))
+	q.M = sparse.csr_matrix('p')
 
 	# uc = np.eye(ENT)[2]
 
 	g = Graph(_variables = [x,y], _factors = [p], _fictional_factor=q)
-	# print g.propagate_thy_beliefs()
+	f,s = g.propagate_thy_beliefs()
+
+	x = np.random.rand(1,10)
+	y = np.random.rand(1,10)
+	m = np.asarray([ np.eye(10,10)[i] for i in np.random.randint(0,10,10)])
+	x = sps.csr_matrix(x, dtype = np.float64 )
+	y = sps.csr_matrix(y, dtype = np.float64 )
+	m = sps.csr_matrix(m, dtype = np.float64 )
+
+	op = f(x,y,m)
+
+
+	sm = sparse.csr_matrix()
+	eval = theano.function([sm],sparse.dense_from_sparse(sm))
+
+	for s in op:
+		print eval(s)

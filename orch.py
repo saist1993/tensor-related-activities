@@ -1,13 +1,20 @@
 ''' >Calls dataset reader to create one hot encoding and label encoder '''
 #external libraries
 import csv
-import theano
+
 import numpy as np
-import theano.tensor as T
-import scipy.sparse as sps
+
+import theano
 from theano import sparse
+import theano.tensor as T
+
+import scipy.sparse as sps
+
+from pprint import pprint
+
 from sklearn import preprocessing
-#internal libraries
+
+# Internal libraries
 import dataset_reader,factor_graph_generator, utils, graph.belief_propagation as gbp
 
 fname = "datasets/wordnet/raw/valid.cfacts"	#dataset file name. Since wordnet is tabseperated file.
@@ -47,24 +54,16 @@ def create_relation_matrix(rel_label,number_of_entites,facts):
 
 #encodes the relations and entites 
 def encode(vars,factors,fictional_factor,number_of_entites,facts):
-	# print "encoding variables"
+
 	for var in vars:
-		var.u = T.dvector(var.label)
-	# print "done encoding variables and off to relation encoding"	
+		var.u = sparse.csr_dmatrix(var.label)
+		# var.u = T.dmatrix(var.label)
+
 	for rel in factors:
 		if rel.label not in relation_lookup:
 			relation_lookup[rel.label] = create_relation_matrix(rel.label,number_of_entites,facts)
-		# try:
-		# 	print relation_lookup[rel.label]
-		# except KeyError:
-		# 	print "key error"
-		# 	# print number_of_entites
-		# 	relation_lookup[rel.label] = create_relation_matrix(rel.label,number_of_entites,facts)
-
-		# 	# relation_lookup[rel.label] = theano.shared(create_relation_matrix(rel.label,number_of_entites,facts))
-		# 	raw_input("see error")
-		# 	print "done creating shared varaibles"
-		rel.M = T.dmatrix('T'+rel.label)
+	
+		rel.M = sparse.csr_dmatrix(rel.label)
 
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# DEBUG
@@ -124,10 +123,10 @@ for line in f:
 	# vars - list of variables ; factors - list of relation ; fictional_factor - head
 	temp.extend([vars,factors,fictional_factor,theano_function,symbols])
 	try:
-		rule_lookup[fictional_factor.label] = rule_lookup[fictional_factor.label].append(temp)
+		rule_lookup[fictional_factor.label].append(temp)
 	except:
 		rule_lookup[fictional_factor.label] = []
-		rule_lookup[fictional_factor.label] = rule_lookup[fictional_factor.label].append(temp)
+		rule_lookup[fictional_factor.label].append(temp)
 
 ''' 
 rule_lookup is a dictionary for which the key is rule head and the values are a list, where each element in the list corresponds to 
@@ -146,38 +145,84 @@ for node in data:
 	
 	'''
 		Creating true output labels
-		pseudocode:
-			@TODO
+		pseudocode:	@TODO
 	'''
 	y = []
 	for output in node[1:]:
-		y.append(entity_encoder.transform(label_encoder.transform(output[2])))
+
+		label = label_encoder.transform([output[2]])
+		y.append(entity_encoder.transform(label))
+
+		#Now, since y is a vector, but we want a 1,n matrix, we go through a little reshaping.
+
 	y = np.sum(y,axis=0)	#stores the true label
-	for bit in xrange(0,len(y)):
-		if y[bit] > 1:
-			y[bit] = 1
+	print y
 	
+	# Since np.sum has no roof, there can be a value '2' somewhere. 
+	# However, in this usecase, every entity (output) must be unique. So this here is redundant.
+	# for bit in xrange(0,len(y)):
+	# 	if y[bit] > 1:
+	# 		y[bit] = 1
+	
+
 	''' 
 		Creating true input labels
+	'''	
+	x = node[0][1]								# x is a string right now. 
+	x = label_encoder.transform([output[2]])	# x is label encoded.
+	x = entity_encoder.transform(x)				# x is now one hot encoded, and thus, the desired _true input_
+
 	'''
-	x = node[0][1].u #verify this
-	# print x, type(x),node[0][1]
-	# raw_input("check for types and shit of x")
-	'''
-		list of rules having same fictional factor / head.
+		List of rules having same fictional factor / head.
 		each rule is a list containing :- [vars,factors,fictional_factor, belief_propagation_equation]
 		vars - list of variables ; factors - list of relation ; fictional_factor - head ; belief_propagation_equation - theano equation
 	'''
-	rules = rule_lookup(node[0][0])
+	rules = rule_lookup[node[0][0]]
 
+	'''
+		Purpose of this block:
+			-> the real training happens here. Previously we just ran BP and got theano functions.
+			-> it deals with multiple entries of one rule (same predicate + same entity)
+				-> by treating them as individual rules. We're not adding their equations or something.
 
+		Each rule in rules has the format: vars,factors,fictional_factor,theano_function,symbols
+
+	'''
 	for rule in rules:
-		#each rule is a list containing :- [vars,factors,fictional_factor, belief_propagation_equation]
+
+		# Collecting the theano function
 		theano_function = rule[3]
+
+		# Collecting the symbols (things used inside the function to be given as inputs alongside x and y)
 		relation_list = []
 		for rel in rule[-1]:
 			relation_list.append(relation_lookup[rel.label])
-		output,relation_matrix = theano_function(x,y,relation_list)
+
+		
+		print ("Symbols: ")
+		pprint(relation_list)
+		
+		print x.shape, y.shape
+		print [i.shape for i in relation_list]
+
+		raw_input("Verify")
+
+		if len(relation_list) == 1:
+			output,relation_matrix = theano_function(x,y,relation_list[0])
+		elif len(relation_list) == 2:
+			output,relation_matrix = theano_function(x,y,relation_list[0], relation_list[1])
+		elif len(relation_list) == 3:
+			output,relation_matrix = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2])
+		elif len(relation_list) == 4:
+			output,relation_matrix = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2], relation_list[3])
+		elif len(relation_list) == 5:
+			output,relation_matrix = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2], relation_list[4])
+		else:
+			print "Too many symbols you have. Hmm. Fuck off, you must."
+
+		'''
+
+		'''
 		for i in xrange(0,len(rule[-1])):
 			rel = rule[-1][i]
 			relation_lookup[rel.label] = relation_matrix[i]
