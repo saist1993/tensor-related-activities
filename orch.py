@@ -155,6 +155,8 @@ data = utils.parse_example(example_file)
 
 
 for node in data:
+
+
 	# node = [['hypernym', '12455540', 'Y'], ['hypernym', '12455540', '13134302']]
 	
 	'''
@@ -166,8 +168,6 @@ for node in data:
 
 		label = label_encoder.transform([output[2]])
 		y.append(entity_encoder.transform(label))
-
-		#Now, since y is a vector, but we want a 1,n matrix, we go through a little reshaping.
 
 	y = np.sum(y,axis=0)	#stores the true label
 	print y
@@ -191,8 +191,12 @@ for node in data:
 		each rule is a list containing :- [vars,factors,fictional_factor, belief_propagation_equation]
 		vars - list of variables ; factors - list of relation ; fictional_factor - head ; belief_propagation_equation - theano equation
 	'''
-	rules = rule_lookup[node[0][0]]
-
+	try:
+		rules = rule_lookup[node[0][0]]
+	except KeyError:
+		print node
+		raw_input("Threw a keyerror. Check pleaj.")
+		continue
 	'''
 		Purpose of this block:
 			-> the real training happens here. Previously we just ran BP and got theano functions.
@@ -215,33 +219,48 @@ for node in data:
 			relation_list.append(relation_lookup[rel.label])
 
 		
-		print ("Symbols: ")
-		pprint(relation_list)
+		# print ("Symbols: ")
+		# pprint(relation_list)
 		
-		print x.shape, y.shape
-		print [i.shape for i in relation_list]
+		# print x.shape, y.shape
+		# print [i.shape for i in relation_list]
 
-		raw_input("Verify")
+		# print "\n\n\n"
 
 		if len(relation_list) == 1:
-			output,relation_matrix = theano_function(x,y,relation_list[0])
+			output,m1 = theano_function(x,y,relation_list[0])
+			relation_lookup[rule[-1][0].label] = m1
 		elif len(relation_list) == 2:
-			output,relation_matrix = theano_function(x,y,relation_list[0], relation_list[1])
+			output,m1,m2 = theano_function(x,y,relation_list[0], relation_list[1])
+			relation_lookup[rule[-1][0].label] = m1
+			relation_lookup[rule[-1][1].label] = m2
 		elif len(relation_list) == 3:
-			output,relation_matrix = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2])
+			output,m1,m2,m3 = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2])
+			relation_lookup[rule[-1][0].label] = m1
+			relation_lookup[rule[-1][1].label] = m2
+			relation_lookup[rule[-1][2].label] = m3
 		elif len(relation_list) == 4:
-			output,relation_matrix = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2], relation_list[3])
+			output,m1,m2,m3,m4 = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2], relation_list[3])
+			relation_lookup[rule[-1][0].label] = m1
+			relation_lookup[rule[-1][1].label] = m2
+			relation_lookup[rule[-1][2].label] = m3
+			relation_lookup[rule[-1][3].label] = m4
 		elif len(relation_list) == 5:
-			output,relation_matrix = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2], relation_list[4])
+			output,m1,m2,m3,m4,m5 = theano_function(x,y,relation_list[0], relation_list[1], relation_list[2], relation_list[4])
+			relation_lookup[rule[-1][0].label] = m1
+			relation_lookup[rule[-1][1].label] = m2
+			relation_lookup[rule[-1][2].label] = m3
+			relation_lookup[rule[-1][3].label] = m4
+			relation_lookup[rule[-1][4].label] = m5
 		else:
 			print "Too many symbols you have. Hmm. Fuck off, you must."
 
 		'''
 
 		'''
-		for i in xrange(0,len(rule[-1])):
-			rel = rule[-1][i]
-			relation_lookup[rel.label] = relation_matrix[i]
+		# for i in xrange(0,len(rule[-1])):
+		# 	rel = rule[-1][i]
+		# 	relation_lookup[rel.label] = relation_matrix[i]
 
 
 
