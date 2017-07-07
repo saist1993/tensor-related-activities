@@ -20,11 +20,15 @@ def label_one_hot_encoder(facts):
 	facts = np.delete(facts, [0], axis=1)
 	facts = facts.transpose()
 	le = preprocessing.LabelEncoder()
-	facts[0] = le.fit_transform(facts[0])
-	facts[1] = le.fit_transform(facts[1])
-	facts[2] = le.fit_transform(facts[2])
+
+
+	le.fit(facts.flatten())
+
+	facts[0] = le.transform(facts[0])
+	facts[1] = le.transform(facts[1])
+	facts[2] = le.transform(facts[2])
+
 	ents = np.concatenate([facts[1],facts[2]])
-	# print len(list(set(ents)))
 	entites = [[ent] for ent in ents]
 	enc = preprocessing.OneHotEncoder()
 	enc.fit(entites)
@@ -41,7 +45,7 @@ def label_one_hot_encoder(facts):
 	'''
 	return le,enc,len(list(set(ents))),facts
 
-print label_one_hot_encoder(facts)
+# print label_one_hot_encoder(facts)
 
 
 # #preprocesssing for converting the data into a one hot encoded format

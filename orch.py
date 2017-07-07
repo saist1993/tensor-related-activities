@@ -28,25 +28,31 @@ def create_relation_matrix(rel_label,number_of_entites,facts):
 		Function creates sparse relation matrix given relation label and facts.
 
 		For the given predicate, we filter from the facts object, all those facts which have our target relation.
-		Then, we make three arrays out of this filtered facts:
-			- A: left entity of these facts
-			- B: right entity of these facts
-			- C: random floats (same length as A and B)
+		Then, we make three arrays out of this filtered k
 	'''
 	left_entity = []
 	right_entity = []
 	random_number = []
-	for i in xrange(0,len(facts[0])):
-		if facts[0][i] == rel_label:
-			left_entity.append(facts[1][i])
-			right_entity.append(facts[2][i])
-			random_number.append(np.random.randn)
-	mat = np.zeros((number_of_entites,number_of_entites))
-	for i in range(len(left_entity)):
-		
-		mat[left_entity[i]][right_entity[j]] = np.random.randn()
 
-	return sps.csr_matrix(mat)
+	mat = np.zeros((number_of_entites,number_of_entites))
+
+	for i in xrange(0,len(facts[0])):
+
+		if int(facts[0][i]) == int(rel_label):
+			left_entity.append(int(facts[1][i]))
+			right_entity.append(int(facts[2][i]))
+			mat[left_entity[-1]][right_entity[-1]] = np.random.randn()			
+
+	# for i in range(len(left_entity:	
+	# 	for j in range(len(right_entity)):
+	# 		mat[left_entity[i]][right_entity[j]] = np.random.randn()
+
+	# print mat
+	print mat.shape
+	# print mat.sum()
+	# raw_input("See matrix")
+	mat = sps.csr_matrix(mat)
+	return mat
 	# return sparse.CSR((random_number,(left_entity,right_entity)),shape=(number_of_entites,number_of_entites))
 	# return sps.csr_matrix((random_number,(left_entity,right_entity)),shape=(number_of_entites,number_of_entites))
 	# matrix = sparse.coo_matrix((C,(A,B)),shape=(5,5))
@@ -56,14 +62,19 @@ def create_relation_matrix(rel_label,number_of_entites,facts):
 def encode(vars,factors,fictional_factor,number_of_entites,facts):
 
 	for var in vars:
-		var.u = sparse.csr_dmatrix(var.label)
+		var.u = sparse.csr_matrix(var.label)
 		# var.u = T.dmatrix(var.label)
 
 	for rel in factors:
 		if rel.label not in relation_lookup:
-			relation_lookup[rel.label] = create_relation_matrix(rel.label,number_of_entites,facts)
+
+			#Label encode the relation label.
+			rel_label = label_encoder.transform([rel.label])[0]
+
+			#Get a matrix for this relation.
+			relation_lookup[rel.label] = create_relation_matrix(rel_label,number_of_entites,facts)
 	
-		rel.M = sparse.csr_dmatrix(rel.label)
+		rel.M = sparse.csr_matrix(rel.label)
 
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# DEBUG
@@ -84,11 +95,9 @@ def encode(vars,factors,fictional_factor,number_of_entites,facts):
 	# 	print f.M.__class__
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
 	return vars,factors,fictional_factor
 
 
-#file is in tab seperated formated.
 #This parses the facts file.
 with open(fname) as tsv:
 	reader = csv.reader(tsv, dialect='excel', delimiter='\t')
@@ -110,7 +119,7 @@ for line in f:
 	if factor_graph_generator.rule_parser(line) == -1:
 		continue
 
-	print "started rule parsing for rule: ", line
+	print "Rule: ", line
 	vars,factors,fictional_factor = factor_graph_generator.rule_parser(line)
 	
 	vars,factors,fictional_factor = encode(vars,factors,fictional_factor,number_of_entites,facts)
@@ -127,6 +136,11 @@ for line in f:
 	except:
 		rule_lookup[fictional_factor.label] = []
 		rule_lookup[fictional_factor.label].append(temp)
+
+pprint(relation_lookup)
+raw_input("See the relation lookup!")
+
+
 
 ''' 
 rule_lookup is a dictionary for which the key is rule head and the values are a list, where each element in the list corresponds to 
@@ -189,6 +203,8 @@ for node in data:
 
 	'''
 	for rule in rules:
+
+		print rule
 
 		# Collecting the theano function
 		theano_function = rule[3]
