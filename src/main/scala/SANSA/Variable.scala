@@ -8,6 +8,6 @@ class Variable ( val _is_head: Boolean, val _is_blank: Boolean, override val _la
 
   val head: Boolean = _is_head
   val blank: Boolean = _is_blank
-  var u = null
+  var u = None
 
 }
