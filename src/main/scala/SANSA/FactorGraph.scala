@@ -24,7 +24,7 @@ class FactorGraph(_variables: List[v], _factors_body: List[f], _factor_head: f) 
 	*/
 
 	// Create an empty variable to be used for elegancy.
-	private val blank_node = new v(_is_head = false, _is_blank = true, _label = "phi")
+	private val blank_node = new v(_is_head = false, _is_blank = true, _u = null, _label = "phi")
 
 	// Keep the list of variables in order to map the indices of the matrix to actual graph nodes
 	private val variables = _variables :+ blank_node
@@ -58,7 +58,7 @@ class FactorGraph(_variables: List[v], _factors_body: List[f], _factor_head: f) 
 		neighbors
 	}
 
-	def beliefPropagation(): String = {
+	def beliefPropagation(): Symbol = {
 		/*
 		  Call this function to receive expression achieved by running the belief propagation algorithm.
 				We implement the algorithm listed in the paper mentioned in the comments above.
@@ -78,7 +78,7 @@ class FactorGraph(_variables: List[v], _factors_body: List[f], _factor_head: f) 
 		output
 	}
 
-	private def compileMessage_variable(_node: v, _factor: f): String = {
+	private def compileMessage_variable(_node: v, _factor: f): Symbol = {
 		/*
 		  Pseudocode:
 		  (treat _node as X and _factor as L )
@@ -96,37 +96,47 @@ class FactorGraph(_variables: List[v], _factors_body: List[f], _factor_head: f) 
 		    return v_x
 		 */
 
-		if ( _node == head_factor.i ) return "u_c"
+		if ( _node == head_factor.i )  return _node.u
 
 
 		// Get the neighbors of this node, except for the factor given in the args
 		val neighbors = getNeighbors(_node, exclude = _factor)
 
 		// Send the neighbour + current node to compilemessage_factor and collect what they have to say.
-		val neighbor_values = new ListBuffer[String]()
+		var neighbor_values = new ListBuffer[Symbol]()
 		for (factor <- neighbors) {
-		  neighbor_values += compileMessage_factor(factor, _node)
+			var temp: Symbol = compileMessage_factor(factor, _node)
+			neighbor_values.+=(temp)
 		}
 
-		// Do a scala equivalent of " /dot ".join(neighbor_values) -_-
-		var v_x: String = ""
-		for (i <- 0 until neighbor_values.length) {
-			v_x = v_x.concat(neighbor_values(i))
-			if ( i != neighbor_values.length-1 ) {
-				v_x = v_x.concat(" /mul ")
+
+		/*
+			This code block does elementwise multiplication of all the values received in neighbor_values
+		*/
+		var v_x: Symbol = null
+		try {
+			v_x = neighbor_values(0)
+		} catch {
+
+			//This implies that there are no neighbors. We should not come across something like this. Pray to god nothing's broken
+			case e: Exception => {
+				v_x = null
 			}
 		}
 
+		// For the rest of the symbols (if something still remains), do an elementwise multiplication to v_x
+		for (s <- neighbor_values.slice(1,neighbor_values.length)) {
+			v_x = v_x * s
+		}
 
-		// val v_x: String = neighbor_values.flatten mkString " /mul ". Nopes. Does not work.
-
+		//Return it.
 		v_x
 	}
 
-  private def compileMessage_factor(_factor: f, _node: v): String = {
-    /*
-      Pseudocode:
-				(treat _node as X and _factor as L)
+	private def compileMessage_factor(_factor: f, _node: v): Symbol = {
+		/*
+		Pseudocode:
+			(treat _node as X and _factor as L)
 
 			if L is a unary factor:
 				emit v_L,_X = v_L
@@ -138,31 +148,17 @@ class FactorGraph(_variables: List[v], _factors_body: List[f], _factor_head: f) 
 				v_i =  compilemessage_node(X_i, L)
 
 			return this
-     */
+		*/
+		var v_i: Symbol = null
 
-    // If the factor is unary. @TODO: See if we need another variable like self.v to represent the value of unary predicates.
-    if (_factor.o == None)  return _factor.label
+		//@TODO: See if we need another variable like self.v to represent the value of unary predicates.
+		if (_factor.o == null)  return _factor.M                                            // If the factor is unary.
 
-    else if (_factor.o == _node) {
-		// If the node is the output node for this factor
-		val v_i: String = compileMessage_variable(_factor.i, _factor)
-		return v_i + " /dot " + _factor.label
-    }
+		//The factor then must be a good ol' binary factor
+		else if (_factor.o == _node) v_i = compileMessage_variable(_factor.i, _factor)      // If the node is the output node for this factor
 
-	else if (_factor.i == _node) {
-		// If the node is the input node for this factor
-		val v_i: String = compileMessage_variable(_factor.o, _factor)
-		return v_i + " /dot " + _factor.label
+		else v_i = compileMessage_variable(_factor.o, _factor)                              // If the node is the input node for this factor
+
+		return Symbol.dot("dot")()(Map("lhs" -> v_i, "rhs" -> _factor.M))
 	}
-
-	else {
-	    // Code should not come to this block. Something wrong with the algorithm.
-	    // This one is here to make the Scala compiler happy.
-	    // @TODO: Shoot a warning, will ye
-	    return "Poop"
-    }
-
-
-
-  }
 }

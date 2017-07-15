@@ -20,22 +20,25 @@ object App {
 	//
 	//  val x = s.Variable(name = "a")
 	//  val w = s.Variable(name = "b")
-	val vara = new v(false, false, "a")
+
+	val vara = new v(false, false, s.Variable("a"), "a")
 	//
-	var vl = List(vara,new v(false, false, "b"),new v(false, false, "c"))
-	var f1 = new f(_i = vara, _o = vl(1), _label = "f1")
-	var f2 = new f(_i = vara, _o = vl(2), _label = "f2")
-	var f3 = new f(_i = vl(2), _o = vl(1), _label = "f3")
+	var vl = List(vara,new v(false, false, _u = s.Variable("b"), "b"),new v(false, false, _u = s.Variable("c"),"c"))
+	var f1 = new f(_i = vara, _o = vl(1), _M = s.Variable("f1"), _label = "f1")
+	var f2 = new f(_i = vara, _o = vl(2), _M = s.Variable("f2"), _label = "f2")
+	var f3 = new f(_i = vl(2), _o = vl(1), _M = s.Variable("f3"), _label = "f3")
 
 	var g = new FactorGraph(_variables = vl, _factors_body = List(f2,f3), _factor_head = f1)
 	//  var n = g.getNeighbors(vl(2),exclude=f2)
 
 	//  println(n(0)._label)
-
-	println( "Hello World!" )
+	//	var u = s.Variable("u")
 
 	println("Jello")
-	println(g.beliefPropagation())
+	var op: Symbol = g.beliefPropagation()
+	println(op.listArguments())
 
+//	var a = List(1,2,3)
+//	println(a(4))
 
 }
