@@ -1,13 +1,9 @@
-package SANSA
-
-import ml.dmlc.mxnet._
-import ml.dmlc.mxnet.{Symbol => s}
-import ml.dmlc.mxnet.{NDArray => nd}
-
-import scala.collection.mutable.ListBuffer
-import scala.collection.mutable.{Map => mutableMap}
+package SANSA.graph
 
 import SANSA.graph.{Factor => f, Variable => v}
+import ml.dmlc.mxnet.{NDArray => nd, Symbol => s, _}
+
+import scala.collection.mutable.{ListBuffer, MutableList, Map => mutableMap}
 
 /**
   * Created by priyansh on 10/07/17.
@@ -18,23 +14,94 @@ import SANSA.graph.{Factor => f, Variable => v}
   * as described in the algorithm in the Tensorlog paper (https://arxiv.org/pdf/1605.06523.pdf)
   *
   **/
-class FactorGraph(_variables: List[v], _factors_body: List[f], _factor_head: f, _n_e: Int) {
+class FactorGraph(_rule: String, _n_e: Int) {
 
 	/*
-	Copy the parameters into internal variables.
-	*/
-
-	private val numberEntities = _n_e
-
+		First conver the params into a list of Variable objects and Factor objects
+	 */
 
 	// Create an empty variable to be used for elegancy.
 	private val blankNode = new v(_is_head = false, _is_blank = true, _u = null, _label = "phi")
-	// Keep the list of variables in order to map the indices of the matrix to actual graph nodes
-	private val variables = _variables :+ blankNode
 
-	private val factors = _factors_body
-	// Keep the predicate that appeared in the head of the query in order to know where do we start the BP
-	private val headFactor = _factor_head
+	val rule = "t_stress(P,Yes) :- assign(Yes,yes),person(P) {r1}."
+
+	private def parseRules(_rule: String) = {
+		/*
+			Convert a rule into a list of string of variables and factors
+			Output data:
+				- List(String)
+				- List(Tuple(String, String, String))
+		 */
+
+		var variables = MutableList[String]()
+		var factors = MutableList[String]()
+		var tokens = rule.split(":-")
+		var head = tokens(0)
+		//head = t_stress(P,Yes)
+		var body = tokens(1)
+		//body =  assign(Yes,yes),person(P) {r1}.
+
+		//Fix the head
+		var headFactor = head.split("\\(")(0)  //DONE!
+		//headFactor = t_stress (DONE)
+		var headRest = head.slice(headFactor.length,head.length)
+		//headRest = (P,Yes)
+		headRest = headRest.replace("(","").replace(")","")
+		//headRest = P,Yes
+		var headVars = headRest.split(",")    //DONE!
+		//headVars.mkString(" and ") = P and Yes
+
+		//Fix the body
+		body = body.slice(0,body.length - 6).trim
+		//body = assign(Yes,yes),person(P)
+		var bodyTokens = body.split("\\),")
+		//bodyTokens.mkString("|") = assign(Yes,yes|person(P)
+		var bodyFactors = MutableList[String]()
+		var bodyVariables = MutableList[String]()
+		for (token <- bodyTokens) {
+
+			//Get the tokenhead
+			var tokenHead = token.split("\\(")(0).trim
+			//tokenHead = person
+
+			//Get the body
+			var tokenBody = token.split("\\(")(1).trim
+			//tokenBody = Yes,yes || P)
+			if (tokenBody(tokenBody.length-1) == ')') {
+				//If here, remove the trailing bracket
+				tokenBody = tokenBody.slice(0,tokenBody.length-1)
+			}
+			//tokenBody = Yes,yes || P
+
+			//Binary token
+			if (tokenBody.contains(',')) {
+
+				//Find the left and right variable.
+				//Append both of them to a mutable map.
+
+				var leftVar = tokenBody.split(',')(0).trim
+				var rightVar = tokenBody.split(',')(1).trim
+
+				//				if !()
+				bodyFactors += tokenHead
+
+			}
+
+			//			println(tokenBody(tokenBody.length-1))
+		}
+	}
+
+
+	val (variables, factors) = (None, None)
+
+
+	private val numberEntities = _n_e
+//	// Keep the list of variables in order to map the indices of the matrix to actual graph nodes
+//	private val variables = _variables :+ blankNode
+//
+//	private val factors = _factors_body
+//	// Keep the predicate that appeared in the head of the query in order to know where do we start the BP
+//	private val headFactor = _factor_head
 
 	private def getNeighbors(node: v, exclude: f): Seq[f] = {
 		/*
@@ -60,6 +127,7 @@ class FactorGraph(_variables: List[v], _factors_body: List[f], _factor_head: f, 
 		// Convert the Listbuffer into a neat little list.
 		neighbors
 	}
+
 
 	private def getSymbol(_label: String): s = {
 		/*
