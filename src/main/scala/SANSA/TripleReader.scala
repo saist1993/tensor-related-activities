@@ -1,5 +1,0 @@
-package SANSA
-
-class TripleReader {
-
-}

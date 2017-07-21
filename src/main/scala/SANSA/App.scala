@@ -5,6 +5,13 @@ import ml.dmlc.mxnet.{Symbol => s}
 import ml.dmlc.mxnet.{NDArray => nd}
 import ml.dmlc.mxnet.module.Module
 
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.ml.feature.{IndexToString, OneHotEncoder, StringIndexer}
+import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+
 import scala.collection.mutable.MutableList
 
 import SANSA.graph.{Variable => v}
@@ -18,20 +25,20 @@ object App {
 
 	//  def foo(x : Array[String]) = x.foldLeft("")((a,b) => a + b)
 
-	def main(args: Array[String]) {
-	}
-
-	//
-	//  val x = s.Variable(name = "a")
-	//  val w = s.Variable(name = "b")
-	val numberOfEntities = 10
-
-	val vara = new v(false, false, s.Variable("a", Map("type" -> "variable")), "a")
-	//
-	var vl = List(vara, new v(false, false, _u = s.Variable("b", Map("type" -> "variable")), "b"), new v(false, false, _u = s.Variable("c",  Map("type" -> "variable")), "c"))
-	var f1 = new f(_i = vara, _o = vl(1), _M = s.Variable("f1", Map("type" -> "factor")), _label = "f1")
-	var f2 = new f(_i = vara, _o = vl(2), _M = s.Variable("f2", Map("type" -> "factor")), _label = "f2")
-	var f3 = new f(_i = vl(2), _o = vl(1), _M = s.Variable("f3", Map("type" -> "factor")), _label = "f3")
+//	def main(args: Array[String]) {
+//	}
+//
+//	//
+//	//  val x = s.Variable(name = "a")
+//	//  val w = s.Variable(name = "b")
+//	val numberOfEntities = 10
+//
+//	val vara = new v(false, false, s.Variable("a", Map("type" -> "variable")), "a")
+//	//
+//	var vl = List(vara, new v(false, false, _u = s.Variable("b", Map("type" -> "variable")), "b"), new v(false, false, _u = s.Variable("c",  Map("type" -> "variable")), "c"))
+//	var f1 = new f(_i = vara, _o = vl(1), _M = s.Variable("f1", Map("type" -> "factor")), _label = "f1")
+//	var f2 = new f(_i = vara, _o = vl(2), _M = s.Variable("f2", Map("type" -> "factor")), _label = "f2")
+//	var f3 = new f(_i = vl(2), _o = vl(1), _M = s.Variable("f3", Map("type" -> "factor")), _label = "f3")
 
 //	var g = new FactorGraph(_variables = vl, _factors_body = List(f2, f3), _factor_head = f1, _n_e = numberOfEntities)
 //	//  var n = g.getNeighbors(vl(2),exclude=f2)
@@ -92,76 +99,22 @@ object App {
 //	println(op.argDict)
 //	println(op.gradDict)
 
-	val rule = "t_stress(P,Yes) :- assign(Yes,yes),person(P) {r1}."
-
-	def parseRules(_rule: String) = {
-		/*
-			Convert a rule into a list of string of variables and factors
-			Output data:
-				- List(String)
-				- List(Tuple(String, String, String))
-		 */
-
-		var variables = MutableList[String]()
-		var factors = MutableList[String]()
-		var tokens = rule.split(":-")
-		var head = tokens(0)
-			//head = t_stress(P,Yes)
-		var body = tokens(1)
-			//body =  assign(Yes,yes),person(P) {r1}.
-
-		//Fix the head
-		var headFactor = head.split("\\(")(0)  //DONE!
-			//headFactor = t_stress (DONE)
-		var headRest = head.slice(headFactor.length,head.length)
-			//headRest = (P,Yes)
-		headRest = headRest.replace("(","").replace(")","")
-			//headRest = P,Yes
-		var headVars = headRest.split(",")    //DONE!
-			//headVars.mkString(" and ") = P and Yes
-
-		//Fix the body
-		body = body.slice(0,body.length - 6).trim
-			//body = assign(Yes,yes),person(P)
-		var bodyTokens = body.split("\\),")
-			//bodyTokens.mkString("|") = assign(Yes,yes|person(P)
-		var bodyFactors = MutableList[String]()
-		var bodyVariables = MutableList[String]()
-		for (token <- bodyTokens) {
-
-			//Get the tokenhead
-			var tokenHead = token.split("\\(")(0).trim
-				//tokenHead = person
-
-			//Get the body
-			var tokenBody = token.split("\\(")(1).trim
-				//tokenBody = Yes,yes || P)
-			if (tokenBody(tokenBody.length-1) == ')') {
-				//If here, remove the trailing bracket
-				tokenBody = tokenBody.slice(0,tokenBody.length-1)
-			}
-				//tokenBody = Yes,yes || P
-
-			//Binary token
-			if (tokenBody.contains(',')) {
-
-				//Find the left and right variable.
-				//Append both of them to a mutable map.
-
-				var leftVar = tokenBody.split(',')(0).trim
-				var rightVar = tokenBody.split(',')(1).trim
-
-//				if !()
-				bodyFactors += tokenHead
-
-			}
-
-//			println(tokenBody(tokenBody.length-1))
-		}
-	}
 
 
-	println(parseRules(rule))
+	
+
+//
+//
+//	println(parseRules(rule))
+
+
+
+	/*
+	SANSA BLOCK
+	 */
+	val conf = new SparkConf().setAppName(appName).setMaster(master)
+	new SparkContext(conf)
+	println("helloworld".split("w").getClass())
 }
 
 
