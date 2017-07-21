@@ -4,9 +4,12 @@ import ml.dmlc.mxnet._
 import ml.dmlc.mxnet.{Symbol => s}
 import ml.dmlc.mxnet.{NDArray => nd}
 import ml.dmlc.mxnet.module.Module
+
+import scala.collection.mutable.MutableList
+
 import SANSA.graph.{Variable => v}
 import SANSA.graph.{Factor => f}
-import SANSA.FactorGraph
+//import SANSA.FactorGraph
 
 /**
   * @author ${user.name}
@@ -30,14 +33,14 @@ object App {
 	var f2 = new f(_i = vara, _o = vl(2), _M = s.Variable("f2", Map("type" -> "factor")), _label = "f2")
 	var f3 = new f(_i = vl(2), _o = vl(1), _M = s.Variable("f3", Map("type" -> "factor")), _label = "f3")
 
-	var g = new FactorGraph(_variables = vl, _factors_body = List(f2, f3), _factor_head = f1, _n_e = numberOfEntities)
-	//  var n = g.getNeighbors(vl(2),exclude=f2)
-
-	//  println(n(0)._label)
-	//	var u = s.Variable("u")
-
-	println("Jello")
-	var op = g.beliefPropagation()
+//	var g = new FactorGraph(_variables = vl, _factors_body = List(f2, f3), _factor_head = f1, _n_e = numberOfEntities)
+//	//  var n = g.getNeighbors(vl(2),exclude=f2)
+//
+//	//  println(n(0)._label)
+//	//	var u = s.Variable("u")
+//
+//	println("Jello")
+//	var op = g.beliefPropagation()
 
 //	println(op.listArguments())
 //	println("op is:\t" + op.toString())
@@ -82,12 +85,83 @@ object App {
 //	println(dr1.toArray.mkString(" "))
 //	println(r1.toArray.mkString(" "))
 //	println(r1.toArray(0) - dr1.toArray(0))
+//
+////	exe.
+//
+//	println(op.getClass())
+//	println(op.argDict)
+//	println(op.gradDict)
 
-//	exe.
+	val rule = "t_stress(P,Yes) :- assign(Yes,yes),person(P) {r1}."
 
-	println(op.getClass())
-	println(op.argDict)
-	println(op.gradDict)
+	def parseRules(_rule: String) = {
+		/*
+			Convert a rule into a list of string of variables and factors
+			Output data:
+				- List(String)
+				- List(Tuple(String, String, String))
+		 */
+
+		var variables = MutableList[String]()
+		var factors = MutableList[String]()
+		var tokens = rule.split(":-")
+		var head = tokens(0)
+			//head = t_stress(P,Yes)
+		var body = tokens(1)
+			//body =  assign(Yes,yes),person(P) {r1}.
+
+		//Fix the head
+		var headFactor = head.split("\\(")(0)  //DONE!
+			//headFactor = t_stress (DONE)
+		var headRest = head.slice(headFactor.length,head.length)
+			//headRest = (P,Yes)
+		headRest = headRest.replace("(","").replace(")","")
+			//headRest = P,Yes
+		var headVars = headRest.split(",")    //DONE!
+			//headVars.mkString(" and ") = P and Yes
+
+		//Fix the body
+		body = body.slice(0,body.length - 6).trim
+			//body = assign(Yes,yes),person(P)
+		var bodyTokens = body.split("\\),")
+			//bodyTokens.mkString("|") = assign(Yes,yes|person(P)
+		var bodyFactors = MutableList[String]()
+		var bodyVariables = MutableList[String]()
+		for (token <- bodyTokens) {
+
+			//Get the tokenhead
+			var tokenHead = token.split("\\(")(0).trim
+				//tokenHead = person
+
+			//Get the body
+			var tokenBody = token.split("\\(")(1).trim
+				//tokenBody = Yes,yes || P)
+			if (tokenBody(tokenBody.length-1) == ')') {
+				//If here, remove the trailing bracket
+				tokenBody = tokenBody.slice(0,tokenBody.length-1)
+			}
+				//tokenBody = Yes,yes || P
+
+			//Binary token
+			if (tokenBody.contains(',')) {
+
+				//Find the left and right variable.
+				//Append both of them to a mutable map.
+
+				var leftVar = tokenBody.split(',')(0).trim
+				var rightVar = tokenBody.split(',')(1).trim
+
+//				if !()
+				bodyFactors += tokenHead
+
+			}
+
+//			println(tokenBody(tokenBody.length-1))
+		}
+	}
+
+
+	println(parseRules(rule))
 }
 
 
