@@ -7,18 +7,18 @@ object factorGraphTest {
 //		val rule = "t_stress(P,Yes) :- assign_yes(Yes),person(P),any(P,Yes) {r1}."
 		val rule = "cancer(P,Yes) :- smokes(P,Yes), cancer_smoke(P,Yes ) {r8}."
 		var g = new FactorGraph(rule, 10)
-		println("the variables and factors are")
-		println(g.variables)
-		println(g.factors)
-
-		println("The variables are: ")
-		for (variable <- g.variables) {
-			println(variable.label)
-		}
-		println("The factors are: ")
-		for (factor <- g.factors) {
-			println(factor.label)
-		}
+//		println("the variables and factors are")
+//		println(g.variables)
+//		println(g.factors)
+//
+//		println("The variables are: ")
+//		for (variable <- g.variables) {
+//			println(variable.label)
+//		}
+//		println("The factors are: ")
+//		for (factor <- g.factors) {
+//			println(factor.label)
+//		}
 
 		val exec = g.beliefPropagation()
 		println(exec.argDict)

@@ -21,10 +21,7 @@ object labelEncodingTest {
 
 
 
-		//
-		val rdds = labelEncoding.groupBy(s => s(0))
-		rdds.collect().foreach(println)
-//		labelEncoding.collect().foreach(println)
+		labelEncoding.collect().foreach(println)
 		println(labelEncoder.entityCounter)
 	}
 
