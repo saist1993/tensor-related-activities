@@ -54,7 +54,8 @@ object labelEncoder extends Serializable {
 	}
 
 	def encode(_inputs: List[String]): List[Int] = {
-
+		println(_inputs.mkString("|"))
+		//@TODO: write something here to handle unary predicates too.
 		val encoded = List( _encodePredicates(_inputs(0)), _encodeEntities(_inputs(1)), _encodeEntities(_inputs(2)) )
 		encoded
 	}
