@@ -5,7 +5,7 @@ import scala.collection.mutable.{Map => mutableMap}
 
 object dataCollector extends Serializable {
 	/*
-		This class is responsible for collecting data and create sparse matrices or vectors
+		This object is responsible for collecting data and create sparse matrices or vectors
 			corresponding to the triples.
 
 		One object of this class ought to have been made for one predicate and thus would store a
@@ -47,6 +47,7 @@ object dataCollector extends Serializable {
 			}
 		}
 
+		//Update the value.
 		if (unary) matrix.setValueUnary( 1.0f,_triple(0))
 		else matrix.setValueBinary(1.0f, (_triple(1),_triple(2)))
 
