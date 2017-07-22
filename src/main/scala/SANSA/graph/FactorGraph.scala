@@ -178,10 +178,10 @@ class FactorGraph(_rule: String, _n_e: Int) {
 				//Boolean hai
 				var rightv = variableMap(rightVar)
 
-				factorList += new f(_i = leftv, _o = rightv, _M = s.Variable(factor._1, Map("type" -> "factor")), _label = factor._1)
+				factorList += new f(_i = leftv, _o = rightv, _M = s.Variable(factor._1, Map("type" -> "factor",  "unary" -> "no")), _label = factor._1)
 			} else {
 				var rightv = null
-				factorList += new f(_i = leftv, _o = rightv, _M = s.Variable(factor._1, Map("type" -> "factor")), _label = factor._1)
+				factorList += new f(_i = leftv, _o = rightv, _M = s.Variable(factor._1, Map("type" -> "factor", "unary" -> "yes")), _label = factor._1)
 			}
 
 		}
@@ -195,10 +195,10 @@ class FactorGraph(_rule: String, _n_e: Int) {
 		var headFactor = if (null != r) {
 			//Binary hai
 			var rightv = variableMap(r)
-			new f(_i = leftVar, _o = rightv, _M = s.Variable(hf,Map("type" -> "factor")), _label = hf)
+			new f(_i = leftVar, _o = rightv, _M = s.Variable(hf,Map("type" -> "factor",  "unary" -> "no")), _label = hf)
 		} else {
 			var rightv = null
-			new f(_i = leftVar, _o = rightv, _M = s.Variable(hf,Map("type" -> "factor")), _label = hf)
+			new f(_i = leftVar, _o = rightv, _M = s.Variable(hf,Map("type" -> "factor",  "unary" -> "no")), _label = hf)
 		}
 
 		(variableList, factorList, headFactor)
@@ -247,7 +247,11 @@ class FactorGraph(_rule: String, _n_e: Int) {
 					map += (label -> Shape(1, numberEntities))
 				}
 				else if (symbol.attr("type") == Some("factor")) {
-					map += (label -> Shape(numberEntities, numberEntities))
+					if (symbol.attr("unary") == Some("yes")) {
+						map += (label -> Shape(1, numberEntities))
+					} else {
+						map += (label -> Shape(numberEntities, numberEntities))
+					}
 				}
 			}
 
