@@ -24,7 +24,7 @@ class FactorGraph(_rule: String, _n_e: Int) {
 	private val blankNode = new v(_is_head = false, _is_blank = true, _u = null, _label = "phi")
 	private val numberEntities = _n_e
 
-	private val (variablesStr, factorsStr, headFactorStr) = parseRules(_rule)
+	val (variablesStr, factorsStr, headFactorStr) = parseRules(_rule)
 
 	private var (variables, factors, headFactor) = convertToNodes(variablesStr, factorsStr, headFactorStr)
 
@@ -345,6 +345,8 @@ class FactorGraph(_rule: String, _n_e: Int) {
 
 		else v_i = compileMessage_variable(_factor.o, _factor)                              // If the node is the input node for this factor
 
+		println(v_i)
+		println(_factor.M)
 		return s.dot("dot")()(Map("lhs" -> v_i, "rhs" -> _factor.M))
 	}
 }

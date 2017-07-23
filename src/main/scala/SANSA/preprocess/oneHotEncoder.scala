@@ -5,8 +5,8 @@ import ml.dmlc.mxnet.{Shape, NDArray => nd}
 import scala.collection.mutable.MutableList
 
 
-//@TODO: make it serializable before throwing it to spark map
-object oneHotEncoder extends Serializable {
+//@TODO: make it serializable before throwing it to spark map:
+object oneHotEncoder  extends Serializable {
 	/*
 		This object is used to one-hot encode everything that is passed to it.
 		Give it an int (typically, representing an entity) and it will give you a one-hot representation back.
