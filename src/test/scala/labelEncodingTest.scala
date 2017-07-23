@@ -21,7 +21,7 @@ object labelEncodingTest {
 
 
 
-		labelEncoding.collect().foreach(println)
+		labelEncoding.collect()
 		println(labelEncoder.entityCounter)
 	}
 

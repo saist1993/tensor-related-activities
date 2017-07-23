@@ -8,7 +8,7 @@ object oneHotEncoderTest {
 
 	def main(args: Array[String]): Unit = {
 //		println("Haven't come to this class yet. Waitey Waitey")
-		println(oneHotEncoder.encode(3,10).toArray.deep.mkString("|"))
+		println(oneHotEncoder.encode((List(3,10),20)))
 
 	}
 

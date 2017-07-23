@@ -1,6 +1,6 @@
 package SANSA.preprocess
 
-import scala.collection.mutable.{Map => mutableMap}
+import scala.collection.mutable.{Map => mutableMap, MutableList}
 
 /**
   * Created by gaurav on 21.07.17.
@@ -54,9 +54,12 @@ object labelEncoder extends Serializable {
 	}
 
 	def encode(_inputs: List[String]): List[Int] = {
-		println(_inputs.mkString("|"))
-		//@TODO: write something here to handle unary predicates too.
-		val encoded = List( _encodePredicates(_inputs(0)), _encodeEntities(_inputs(1)), _encodeEntities(_inputs(2)) )
+//		println("Inputs are:\t" + _inputs.mkString("|"))
+
+		val encoded =
+		if (_inputs.length == 3) List( _encodePredicates(_inputs(0)), _encodeEntities(_inputs(1)), _encodeEntities(_inputs(2)) )
+		else List( _encodePredicates(_inputs(0)), _encodeEntities(_inputs(1)))
 		encoded
+
 	}
 }
