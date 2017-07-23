@@ -4,8 +4,8 @@ import SANSA.preprocess.oneHotEncoder
 import SANSA.graph.FactorGraph
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SparkSession
-
 import ml.dmlc.mxnet.Executor
+import ml.dmlc.mxnet.optimizer.SGD
 
 import scala.collection.mutable.{ListBuffer, MutableList, Map => MutableMap}
 
@@ -68,12 +68,13 @@ object preProcessingTest {
 
 		}
 
-		println(ruleBook.mkString("\n"))
 
-//		val executorRDD = graphRDD.map(s => s.beliefPropagation())
-//
-//		val testRDD = executorRDD.collect().foreach{ case s => {
-//			println(s.argDict)
-//		}}
+		/*
+			Training time!
+		 */
+
+
+
+
 	}
 }
